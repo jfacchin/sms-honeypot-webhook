@@ -1,0 +1,19 @@
+# Python virtual environment
+.venv/
+venv/
+
+# Python cache files
+__pycache__/
+
+# Secrets
+.env
+
+# Local test data
+messages.csv
+
+# Editor settings
+.idea/
+.vscode/
+
+# Mac system files
+.DS_Store
