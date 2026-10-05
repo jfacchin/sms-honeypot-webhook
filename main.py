@@ -1,37 +1,35 @@
-# this app receives incoming sms messages from twilio and saves them to a csv file
+# this app receives incoming sms messages from twilio and saves them to firestore
 from fastapi import FastAPI, Form
-from datetime import datetime
-import csv
-import os
+from fastapi.responses import Response
+from google.cloud import firestore
 
 app = FastAPI()
 
-# name of the file where every incoming message gets logged
-LOG_FILE = "messages.csv"
 
-# twilio sends a POST request here every time a text arrives at our number
+#connect to the firestore database
+db = firestore.Client()
+
+    # twilio sends a POST request here every time a text arrives at our number
 @app.post("/sms")
-async def receive_sms(
+def receive_sms(
     From: str = Form(...),
     To: str = Form(...),
-    Body: str = Form(...),
+    Body: str = Form(""),
     MessageSid: str = Form(...)
 ):
-    # record the exact time the message was received
-    timestamp = datetime.utcnow().isoformat()
+    # save message to "messages" collection
+    # MessageSid as id so if twilio retries it will not create a duplicate 
+    db.collection("messages").document(MessageSid).set({
+        "timestamp": firestore.SERVER_TIMESTAMP,
+        "from": From,
+        "to": To,
+        "body": Body,
+        "message_sid": MessageSid,
+    })
 
-    # check if the csv file already exists so we know whether to add column headers
-    file_exists = os.path.isfile(LOG_FILE)
-    with open(LOG_FILE, "a", newline="") as f:
-        writer = csv.writer(f)
-        if not file_exists:
-            # write the header row only once, the first time the file is created
-            writer.writerow(["timestamp", "from", "to", "body", "message_sid"])
-        # write the actual message data as a new row
-        writer.writerow([timestamp, From, To, Body, MessageSid])
 
-    # twilio expects a response confirming we got the message
-    return {"status": "received"}
+  # empty twilio response = don't reply to the sender
+    return Response(content="<Response></Response>", media_type="application/xml")
 
 # simple route to confirm the app is alive, useful for testing the deployment
 @app.get("/")
